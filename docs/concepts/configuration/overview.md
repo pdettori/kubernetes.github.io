@@ -11,60 +11,73 @@ This document is meant to highlight and consolidate in one place configuration b
 
 ## General Config Tips
 
-- When defining configurations, specify the latest stable API version (currently v1).
+### Api version
+When defining configurations, specify the latest stable API version (currently v1).
 
-- Configuration files should be stored in version control before being pushed to the cluster. This allows a configuration to be quickly rolled back if needed, and will aid with cluster re-creation and restoration if necessary.
+### Version control
+Configuration files should be stored in version control before being pushed to the cluster. This allows a configuration to be quickly rolled back if needed, and will aid with cluster re-creation and restoration if necessary.
 
-- Write your configuration files using YAML rather than JSON. They can be used interchangeably in almost all scenarios, but YAML tends to be more user-friendly for config.
+### Use YAML
+Write your configuration files using YAML rather than JSON. They can be used interchangeably in almost all scenarios, but YAML tends to be more user-friendly for config.
 
-- Group related objects together in a single file where this makes sense. This format is often easier to manage than separate files. See the [guestbook-all-in-one.yaml](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/examples/guestbook/all-in-one/guestbook-all-in-one.yaml) file as an example of this syntax.
+### Group files together
+Group related objects together in a single file where this makes sense. This format is often easier to manage than separate files. See the [guestbook-all-in-one.yaml](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/examples/guestbook/all-in-one/guestbook-all-in-one.yaml) file as an example of this syntax.
 (Note also that many `kubectl` commands can be called on a directory, and so you can also call
 `kubectl create` on a directory of config files— see below for more detail).
 
-- Don't specify default values unnecessarily, in order to simplify and minimize configs, and to
+### Do not specify defaults when not needed
+Don't specify default values unnecessarily, in order to simplify and minimize configs, and to
   reduce error. For example, omit the selector and labels in a `ReplicationController` if you want
   them to be the same as the labels in its `podTemplate`, since those fields are populated from the
   `podTemplate` labels by default. See the [guestbook app's](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/examples/guestbook/) .yaml files for some [examples](https://github.com/kubernetes/kubernetes/tree/{{page.githubbranch}}/examples/guestbook/frontend-deployment.yaml) of this.
 
-- Put an object description in an annotation to allow better introspection.
+### Annotations
+Put an object description in an annotation to allow better introspection.
 
 
-## "Naked" Pods vs Replication Controllers and Jobs
+## "Naked" Pods vs Replica Sets and Jobs
 
-- If there is a viable alternative to naked pods (i.e., pods not bound to a [replication controller
-  ](/docs/user-guide/replication-controller)), go with the alternative. Naked pods will not be rescheduled in the
+- If there is a viable alternative to naked pods (i.e., pods not bound to a [replica set controller
+  ](/docs/user-guide/replica-set)), go with the alternative. Naked pods will not be rescheduled in the
   event of node failure.
 
-  Replication controllers are almost always preferable to creating pods, except for some explicit
+  Replica Set controllers are almost always preferable to creating pods, except for some explicit
   [`restartPolicy: Never`](/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy) scenarios.  A
   [Job](/docs/concepts/jobs/run-to-completion-finite-workloads/) object (currently in Beta), may also be appropriate.
 
 
 ## Services
 
-- It's typically best to create a [service](/docs/concepts/services-networking/service/) before corresponding [replication
-  controllers](/docs/concepts/workloads/controllers/replicationcontroller/), so that the scheduler can spread the pods comprising the
-  service. You can also create a replication controller without specifying replicas (this will set
+### Create service first
+It's typically best to create a [service](/docs/concepts/services-networking/service/) before corresponding [replication
+  controllers](/docs/concepts/workloads/controllers/replicationcontroller/), so that the scheduler can spread the pods comprising the service. You can also create a replication controller without specifying replicas (this will set
   replicas=1), create a service, then scale up the replication controller. This can be useful in
   ensuring that one replica works before creating lots of them.
 
-- Don't use `hostPort` (which specifies the port number to expose on the host) unless absolutely
+### Do not use hostPort 
+  Don't use `hostPort` (which specifies the port number to expose on the host) unless absolutely
   necessary, e.g., for a node daemon. When you bind a Pod to a `hostPort`, there are a limited
   number of places that pod can be scheduled, due to port conflicts— you can only schedule as many
   such Pods as there are nodes in your Kubernetes cluster.
 
-  If you only need access to the port for debugging purposes, you can use the [kubectl proxy and apiserver proxy](/docs/tasks/access-kubernetes-api/http-proxy-access-api/) or [kubectl port-forward](/docs/tasks/access-application-cluster/port-forward-access-application-cluster/).
+### Debugging
+If you only need access to the port for debugging purposes, you can use the [kubectl proxy and apiserver proxy](/docs/tasks/access-kubernetes-api/http-proxy-access-api/) or [kubectl port-forward](/docs/tasks/access-application-cluster/port-forward-access-application-cluster/).
+  
+### External Service access  
   You can use a [Service](/docs/concepts/services-networking/service/) object for external service access.
   If you do need to expose a pod's port on the host machine, consider using a [NodePort](/docs/user-guide/services/#type-nodeport) service before resorting to `hostPort`.
 
-- Avoid using `hostNetwork`, for the same reasons as `hostPort`.
+### Do not use hostNetwork
+Avoid using `hostNetwork`, for the same reasons as `hostPort`.
 
-- Use _headless services_ for easy service discovery when you don't need kube-proxy load balancing.
+### Headless service
+Use _headless services_ for easy service discovery when you don't need kube-proxy load balancing.
   See [headless services](/docs/user-guide/services/#headless-services).
 
 ## Using Labels
 
-- Define and use [labels](/docs/user-guide/labels/) that identify __semantic attributes__ of your application or
+### use labels to identify semantic attributes
+Define and use [labels](/docs/user-guide/labels/) that identify __semantic attributes__ of your application or
   deployment. For example, instead of attaching a label to a set of pods to explicitly represent
   some service (e.g.,   `service: myservice`), or explicitly representing the replication
   controller managing the pods  (e.g., `controller: mycontroller`), attach labels that identify
@@ -75,7 +88,8 @@ This document is meant to highlight and consolidate in one place configuration b
 
   A service can be made to span multiple deployments, such as is done across [rolling updates](/docs/tasks/run-application/rolling-update-replication-controller/), by simply omitting release-specific labels from its selector, rather than updating a service's selector to match the replication controller's selector fully.
 
-- To facilitate rolling updates, include version info in replication controller names, e.g. as a
+### Include version in replica set names
+To facilitate rolling updates, include version info in replication controller names, e.g. as a
   suffix to the name. It is useful to set a 'version' label as well. The rolling update creates a
   new controller as opposed to modifying the existing controller. So, there will be issues with
   version-agnostic controller names. See the [documentation](/docs/tasks/run-application/rolling-update-replication-controller/) on
@@ -87,7 +101,8 @@ This document is meant to highlight and consolidate in one place configuration b
   desired state at a controlled rate. (Deployment objects are currently part of the [`extensions`
   API Group](/docs/concepts/overview/kubernetes-api/#api-groups).)
 
-- You can manipulate labels for debugging. Because Kubernetes replication controllers and services
+### Manipulate labels for debugging
+ You can manipulate labels for debugging. Because Kubernetes replication controllers and services
   match to pods using labels, this allows you to remove a pod from being considered by a
   controller, or served traffic by a service, by removing the relevant selector labels. If you
   remove the labels of an existing pod, its controller will create a new pod to take its place.
@@ -96,7 +111,8 @@ This document is meant to highlight and consolidate in one place configuration b
 
 ## Container Images
 
-- The [default container image pull policy](/docs/concepts/containers/images/) is `IfNotPresent`, which causes the
+### Specify pull policy of `Always'if want to use always latest image
+ The [default container image pull policy](/docs/concepts/containers/images/) is `IfNotPresent`, which causes the
   [Kubelet](/docs/admin/kubelet/) to not pull an image if it already exists. If you would like to
   always force a pull, you must specify a pull image policy of `Always` in your .yaml file
   (`imagePullPolicy: Always`) or specify a `:latest` tag on your image.
@@ -106,17 +122,22 @@ This document is meant to highlight and consolidate in one place configuration b
   address this by ensuring that any updates to an image bump the image tag as well (e.g.
   `myimage:v2`), and ensuring that your configs point to the correct version.
 
+### Do not use 'latest' in production
   **Note:** you should avoid using `:latest` tag when deploying containers in production, because this makes it hard
   to track which version of the image is running and hard to roll back.
 
 ## Using kubectl
 
-- Use `kubectl create -f <directory>` where possible. This looks for config objects in all `.yaml`, `.yml`, and `.json` files in `<directory>` and passes them to `create`.
+### use kubectl create when possible
+Use `kubectl create -f <directory>` where possible. This looks for config objects in all `.yaml`, `.yml`, and `.json` files in `<directory>` and passes them to `create`.
 
-- Use `kubectl delete` rather than `stop`. `Delete` has a superset of the functionality of `stop`, and `stop` is deprecated.
+### do not use kubectl delete
+Use `kubectl delete` rather than `stop`. `Delete` has a superset of the functionality of `stop`, and `stop` is deprecated.
 
-- Use kubectl bulk operations (via files and/or labels) for get and delete. See [label selectors](/docs/user-guide/labels/#label-selectors) and [using labels effectively](/docs/concepts/cluster-administration/manage-deployment/#using-labels-effectively).
+### kubectl bulk ops
+Use kubectl bulk operations (via files and/or labels) for get and delete. See [label selectors](/docs/user-guide/labels/#label-selectors) and [using labels effectively](/docs/concepts/cluster-administration/manage-deployment/#using-labels-effectively).
 
-- Use `kubectl run` and `expose` to quickly create and expose single container Deployments. See the [quick start guide](/docs/user-guide/quick-start/) for an example.
+### kubectl run and expose
+Use `kubectl run` and `expose` to quickly create and expose single container Deployments. See the [quick start guide](/docs/user-guide/quick-start/) for an example.
 
 
